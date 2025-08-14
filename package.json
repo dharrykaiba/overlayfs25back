@@ -1,0 +1,32 @@
+{
+  "name": "backoverlay",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "bin": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "build": "pkg . --targets node16-win-x64 --output backend.exe"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "better-sqlite3": "^12.2.0",
+    "body-parser": "^2.2.0",
+    "chalk": "^4.1.2",
+    "detect-port-alt": "^1.1.6",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql": "^2.18.1",
+    "sequelize": "^6.37.7",
+    "sharp": "^0.34.3",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7",
+    "xml2js": "^0.6.2"
+  }
+}

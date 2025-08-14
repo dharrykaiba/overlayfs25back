@@ -1,0 +1,23 @@
+# Node modules
+node_modules/
+# Ignorar la carpeta de uploads
+uploads/
+cache/
+database/
+imgconvert/
+
+# Ignorar cache y autenticación de WhatsApp Web
+.wwebjs_cache/
+.wwebjs_auth/
+
+# Archivos de entorno
+.env
+keys/private_key.pem
+keys/public_key.pem
+
+# Otros archivos
+.DS_Store
+npm-debug.log
+z_noCOMPILAR.txt
+z_estructura.txt
+
