@@ -10,6 +10,6 @@ router.get("/", modsController.allMods);
 router.get("/savegame/:modsSaveGameId", modsController.modsPorSavegame);
 
 // Ruta para obtener un mod por ID (puede ser modName o fileHash)
-router.get("/:id", modsController.obtenerModsPorId);
+router.get("/name/:modName", modsController.obtenerModsPorName);
 
 module.exports = router;

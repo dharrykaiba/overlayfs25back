@@ -1,74 +1,72 @@
 //src/controllers/Mods.js
-const { CareerSave } = require("../config/sequelize");
+const { Mods } = require("../config/sequelize");
 
 /**
- * GET /vehicle
  * Lista todos los mods de todos los savegames
  */
 exports.allMods = async (req, res) => {
   try {
-    const saves = await CareerSave.findAll();
-
-    // Extraer y aplanar todos los mods de cada savegame
-    const mods = saves.flatMap(save => {
-      const extra = save.extra || {};
-      return extra.mod || [];
-    });
-
+    const mods = await Mods.findAll(); // trae todos los mods directamente
     res.json({ ok: true, mods });
   } catch (error) {
-    console.error("❌ Error al obtener todos los mods:", error);
+    console.error("❌ Error al obtener todos los mods:", error.message);
     res.status(500).json({ ok: false, mensaje: "Error interno del servidor" });
   }
 };
 
 /**
- * GET /vehicle/savegame/:modsSaveGameId
  * Lista los mods de un savegame específico
  */
 exports.modsPorSavegame = async (req, res) => {
   const { modsSaveGameId } = req.params;
 
   try {
-    const save = await CareerSave.findOne({
-      where: { savegameId: modsSaveGameId }
+    // Convertimos a string de 3 dígitos
+    const saveSlot = modsSaveGameId.toString().padStart(3, "0");
+
+    // Traemos todos los mods
+    const allMods = await Mods.findAll();
+
+    // Filtramos en memoria porque SQLite no soporta JSON.contains
+    const mods = allMods.filter((m) => {
+      const saves = m.savegames || [];
+      return Array.isArray(saves) && saves.includes(saveSlot);
     });
 
-    if (!save) {
-      return res.status(404).json({ ok: false, mensaje: "Savegame no encontrado" });
+    if (mods.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        mensaje: `No se encontraron mods para el savegame ${saveSlot}`,
+      });
     }
-
-    const mods = (save.extra && Array.isArray(save.extra.mod)) ? save.extra.mod : [];
 
     res.json({ ok: true, mods });
   } catch (error) {
-    console.error(`❌ Error al obtener mods para savegame ${modsSaveGameId}:`, error);
+    console.error(`❌ Error al obtener mods para savegame ${modsSaveGameId}:`, error.message);
     res.status(500).json({ ok: false, mensaje: "Error interno del servidor" });
   }
 };
 
 /**
- * GET /vehicle/:id
- * Obtiene un mod por ID de savegame + su posición en la lista
+ * Busca un mod por su nombre exacto (modName)
  */
-exports.obtenerModsPorId = async (req, res) => {
-  const { id } = req.params; // id podría ser el índice del mod
+exports.obtenerModsPorName = async (req, res) => {
+  const { modName } = req.params;
 
   try {
-    // Buscar en todos los savegames por un mod que tenga ese ID interno (hash)
-    const saves = await CareerSave.findAll();
+    // Buscar en la base de datos por modName
+    const mod = await Mods.findOne({ where: { modName } });
 
-    for (const save of saves) {
-      const mods = save.extra?.mod || [];
-      const encontrado = mods.find(m => m.fileHash === id || m.modName === id);
-      if (encontrado) {
-        return res.json({ ok: true, mod: encontrado });
-      }
+    if (!mod) {
+      return res.status(404).json({
+        ok: false,
+        mensaje: `No se encontró un mod con el nombre "${modName}"`,
+      });
     }
 
-    res.status(404).json({ ok: false, mensaje: "Mod no encontrado" });
+    res.json({ ok: true, mod });
   } catch (error) {
-    console.error(`❌ Error al obtener mod con id ${id}:`, error);
+    console.error(`❌ Error al obtener mod con nombre ${modName}:`, error.message);
     res.status(500).json({ ok: false, mensaje: "Error interno del servidor" });
   }
 };

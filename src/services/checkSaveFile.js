@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const xml2js = require("xml2js");
 
-const { CareerSave } = require("../config/sequelize"); // 👈 importamos el modelo
+const { CareerSave, Mods } = require("../config/sequelize"); // 👈 importamos el modelo
 
 const gameUserPath = process.env.GAME_USER_PATH;
 const savegameSlot = process.env.SAVEGAME_SLOT;
@@ -62,10 +62,52 @@ const leersavexml = async (savegamePath, savegameId) => {
         } en BD`
       );
 
+      // 📌 Procesamos los mods del save
+      if (save.mod) {
+        const modsArray = Array.isArray(save.mod) ? save.mod : [save.mod];
+        const saveSlot = savegameId.toString().padStart(3, "0");
+
+        for (const mod of modsArray) {
+          try {
+            const safeModData = {
+              modName: mod.modName || "UnknownMod",
+              title: mod.title || "Sin título",
+              version: mod.version || "-1.0.0",
+              required: mod.required === "true",
+            };
+
+            // Buscar si ya existe solo para rescatar savegames
+            const existing = await Mods.findOne({
+              where: { modName: safeModData.modName },
+            });
+
+            let savegames = [];
+            if (existing) {
+              savegames = Array.isArray(existing.savegames)
+                ? [...existing.savegames]
+                : [];
+            }
+
+            if (!savegames.includes(saveSlot)) {
+              savegames.push(saveSlot);
+            }
+
+            await Mods.upsert({ ...safeModData, savegames });
+          } catch (err) {
+            console.warn(
+              `⚠️ Error procesando mod (checksavafile.js) ${
+                mod.modName || "Unknown"
+              } (savegame ${saveSlot}): ${err.message}`
+            );
+          }
+        }
+      }
+
       return {
         playTime,
         totalMoney: money,
         farms: save.farms?.farm || [],
+        mods: save.mod || [],
       };
     } else {
       console.warn("⚠️ No se encontró la estructura esperada en el XML.");

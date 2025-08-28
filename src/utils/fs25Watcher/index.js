@@ -27,6 +27,7 @@ async function cargarDatosXML() {
     }
   });
 
+
   if (!hasChanges) {
     console.log(`🕒 [${ahora}] Sin cambios en savegames`);
   }

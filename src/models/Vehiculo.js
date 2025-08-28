@@ -1,7 +1,6 @@
 // models/Vehiculo.js
 module.exports = (sequelize) => {
   const { DataTypes } = require("sequelize");
-
   return sequelize.define("Vehiculo", {
     id: {
       type: DataTypes.STRING,

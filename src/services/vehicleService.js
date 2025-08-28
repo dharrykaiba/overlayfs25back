@@ -45,7 +45,7 @@ const leerXML = async (filePath, gameDataPath, moddir, savegameId) => {
       }
     }
 
-    await convertirDDSaWEBP();
+    //await convertirDDSaWEBP();
     console.log(
       `\n✅ [Savegame ${savegameId}] ${comprados} vehículos procesados.\n`
     );

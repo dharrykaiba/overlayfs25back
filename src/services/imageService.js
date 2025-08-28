@@ -11,6 +11,7 @@ const basePath = process.cwd();
 
 const carpetaDestino = path.resolve(basePath, "imgconvert");
 const carpetaConvertidos = path.join(carpetaDestino, "convert");
+const extensionesPermitidas = [".dds", ".png", ".jpg", ".jpeg", ".webp"];
 
 if (!fs.existsSync(carpetaDestino)) {
   fs.mkdirSync(carpetaDestino, { recursive: true });
@@ -30,7 +31,6 @@ const copiarDDS = (rutaDDS, nombreNuevo = null) => {
 
     // Verificar si el .webp ya existe
     if (webpExiste(nombreArchivo)) {
-      console.log(`✅ ${nombreArchivo} ya convertido. Se omite.`);
       return null;
     }
 
@@ -43,30 +43,76 @@ const copiarDDS = (rutaDDS, nombreNuevo = null) => {
   }
 };
 
+// Copiar imagen de un DLC listado en dlc.json (sin conversión)
+const copiarImagenDLC = (rutaJson, dlc, carpetaDestinoWebp) => {
+  try {
+    if (!dlc.image) return null;
+
+    const carpetaJson = path.dirname(rutaJson);
+    const rutaImagen = path.join(carpetaJson, dlc.image);
+
+    if (!fs.existsSync(rutaImagen)) {
+      console.warn(`⚠️ Imagen de DLC no encontrada: ${rutaImagen}`);
+      return null;
+    }
+
+    const nombreFinal = path.basename(dlc.image);
+    const destino = path.join(carpetaDestinoWebp, nombreFinal);
+
+    // ⚠️ Si ya existe, no sobrescribir
+    if (fs.existsSync(destino)) {
+      return destino;
+    }
+
+    fs.copyFileSync(rutaImagen, destino);
+    console.log(`✅ Imagen DLC copiada: ${destino}`);
+    return destino;
+  } catch (err) {
+    console.error("❌ Error al copiar imagen DLC:", err.message);
+    return null;
+  }
+};
+
 const extraerImagenDesdeZIP = (zipPath, imageName, nombreNuevo = null) => {
   try {
     const nombreFinal = nombreNuevo || imageName;
 
+    // Calcular siempre la ruta del .webp
+    const nombreBase = path.parse(nombreFinal).name + ".webp";
+    const rutaWebp = path.join(carpetaConvertidos, nombreBase);
     // Verificar si el .webp ya existe
     if (webpExiste(nombreFinal)) {
-      console.log(`✅ ${nombreFinal} ya convertido. Se omite.`);
-      return null;
+      return rutaWebp;
     }
 
     const zip = new AdmZip(zipPath);
-    const imageEntry = zip
-      .getEntries()
-      .find(
-        (entry) =>
-          path.basename(entry.entryName).toLowerCase() ===
-          imageName.toLowerCase()
+    // 🔹 Cambio aquí
+
+    const nombreBaseBuscado = path.parse(imageName).name.toLowerCase();
+
+    const imageEntry = zip.getEntries().find((entry) => {
+      const entryParsed = path.parse(entry.entryName);
+      const entryBase = entryParsed.name.toLowerCase();
+      const entryExt = entryParsed.ext.toLowerCase();
+
+      return (
+        entryBase === nombreBaseBuscado &&
+        extensionesPermitidas.includes(entryExt)
       );
+    });
+    // 🔹 Fin del cambio
 
     if (!imageEntry) {
       return null;
     }
 
     const destinoFinal = path.join(carpetaDestino, nombreFinal);
+
+    // ⚠️ Si ya existe, no sobreescribir, solo devolver ruta
+    if (fs.existsSync(destinoFinal)) {
+      return destinoFinal;
+    }
+
     fs.writeFileSync(destinoFinal, zip.readFile(imageEntry));
     return destinoFinal;
   } catch (err) {
@@ -77,16 +123,37 @@ const extraerImagenDesdeZIP = (zipPath, imageName, nombreNuevo = null) => {
 
 const convertirDDSaWEBP = async () => {
   return new Promise((resolve, reject) => {
-    const comando = `powershell -Command "& \\"${pathIrfanView}\\" \\"${carpetaDestino}\\*.dds\\" /convert=\\"${carpetaConvertidos}\\*.webp\\""`;
+    try {
+      // 1. Leer todos los archivos en carpetaDestino
+      const archivos = fs.readdirSync(carpetaDestino);
 
-    exec(comando, (error) => {
-      if (error) {
-        console.error("❌ Error al convertir DDS a WEBP:", error.message);
-        return reject(error);
+      // 2. Filtrar solo los que tengan extensión permitida
+      const archivosPermitidos = archivos.filter((archivo) => {
+        const ext = path.extname(archivo).toLowerCase();
+        return extensionesPermitidas.includes(ext);
+      });
+
+      if (archivosPermitidos.length === 0) {
+        console.log("ℹ️ No se encontraron archivos para convertir.");
+        return resolve(true);
       }
 
-      resolve(true);
-    });
+      // 3. Ejecutar conversión de TODOS los formatos → WEBP con IrfanView
+      const comando = `powershell -Command "& \\"${pathIrfanView}\\" \\"${carpetaDestino}\\*.*\\" /convert=\\"${carpetaConvertidos}\\*.webp\\""`;
+
+      exec(comando, (error) => {
+        if (error) {
+          console.error("❌ Error al convertir a WEBP:", error.message);
+          return reject(error);
+        }
+
+        console.log("✅ Conversión de imágenes a WEBP completada.");
+        resolve(true);
+      });
+    } catch (err) {
+      console.error("❌ Error general en convertirDDSaWEBP:", err.message);
+      reject(err);
+    }
   });
 };
 
@@ -108,4 +175,5 @@ module.exports = {
   extraerImagenDesdeZIP,
   convertirDDSaWEBP,
   eliminarDDSCopiados,
+  copiarImagenDLC,
 };
